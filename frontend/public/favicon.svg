@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Red triangle background -->
+  <polygon points="50,4 97,93 3,93" fill="#B91C1C"/>
+  <!-- Dark inner border -->
+  <polygon points="50,12 89,88 11,88" fill="none" stroke="#7F1D1D" stroke-width="1.5"/>
+
+  <!-- Staff (vertical line) -->
+  <line x1="50" y1="22" x2="50" y2="82" stroke="white" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Winged orb at top of staff -->
+  <circle cx="50" cy="21" r="3.5" fill="white"/>
+
+  <!-- Wings -->
+  <path d="M33,33 C36,27 44,29 50,31 C56,29 64,27 67,33" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+  <!-- Left snake winding -->
+  <path d="M47,34 C38,44 43,53 47,60 C43,67 39,75 45,82" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+
+  <!-- Right snake winding -->
+  <path d="M53,34 C62,44 57,53 53,60 C57,67 61,75 55,82" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+</svg>
