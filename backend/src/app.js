@@ -8,8 +8,26 @@ const { errorHandler, notFound } = require('./middleware/error.middleware');
 const app = express();
 
 // Security and basic middlewares
-app.use(helmet());
-  app.use(cors({ origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : true, credentials: true }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow any vercel.app deployment
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow explicitly listed origins
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(null, true); // Permissive for now — lock down after deployment is stable
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
