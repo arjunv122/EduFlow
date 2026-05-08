@@ -13,8 +13,9 @@ const QuizResult = () => {
     const load = async () => {
       try {
         const res = await getMyAttempt(quizId);
-        const data = res.data?.data;
-        if (!data) { setError('No attempt found for this quiz.'); setLoading(false); return; }
+        // sendSuccess spreads object fields to root level when data is an object
+        const data = res.data;
+        if (!data || !data._id) { setError('No attempt found for this quiz.'); setLoading(false); return; }
         if (!data.isPublished) { setError('Results have not been published yet. Please check back later.'); setLoading(false); return; }
         setAttempt(data);
       } catch {

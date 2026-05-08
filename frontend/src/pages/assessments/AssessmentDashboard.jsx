@@ -42,8 +42,11 @@ const AssessmentDashboard = () => {
           );
           const attemptsMap = {};
           attemptResults.forEach((result, idx) => {
-            if (result.status === 'fulfilled' && result.value?.data?.data) {
-              attemptsMap[fetchedQuizzes[idx]._id] = result.value.data.data;
+            // sendSuccess spreads object fields to root, so attempt is at result.value.data
+            // (not result.value.data.data)
+            const resData = result.status === 'fulfilled' ? result.value?.data : null;
+            if (resData && resData.success && resData._id) {
+              attemptsMap[fetchedQuizzes[idx]._id] = resData;
             }
           });
           setMyAttempts(attemptsMap);
