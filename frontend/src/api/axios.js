@@ -29,10 +29,23 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      // Redirect handled at component level or via custom event
-      window.dispatchEvent(new Event('auth:unauthorized'));
+      const requestUrl = error.config?.url || '';
+      // Skip the session-expired event for auth routes (login, register, reset-password).
+      // These 401s are expected credential failures, NOT expired sessions.
+      const isAuthRoute = requestUrl.includes('/auth/login') ||
+                          requestUrl.includes('/auth/register') ||
+                          requestUrl.includes('/auth/forgot') ||
+                          requestUrl.includes('/auth/reset');
+
+      // Only fire the session-expired event if a token actually existed,
+      // meaning this was a real authenticated request that got rejected.
+      const hadToken = !!localStorage.getItem('token');
+
+      if (!isAuthRoute && hadToken) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('activeInstitutionId');
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
     }
     return Promise.reject(error);
   }

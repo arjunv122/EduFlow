@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         // Check if token is expired client-side (fail fast, don't hit the server)
         if (!decoded || decoded.exp * 1000 < Date.now()) {
           localStorage.removeItem('token');
+          localStorage.removeItem('activeInstitutionId');
           setLoading(false);
           return;
         }
@@ -73,6 +74,7 @@ export const AuthProvider = ({ children }) => {
           }
           if (instId) localStorage.setItem('activeInstitutionId', instId);
         } catch {
+          // Silently clear stale token — DO NOT show "Session expired" toast on initial load
           localStorage.removeItem('token');
           localStorage.removeItem('activeInstitutionId');
         }
