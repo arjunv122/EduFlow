@@ -1,6 +1,6 @@
 const express = require('express');
 const {
-  createQuiz, getQuizzes, startQuiz, submitQuiz, getQuizAttempts, publishQuizResults,
+  createQuiz, getQuizzes, startQuiz, submitQuiz, getQuizAttempts, publishQuizResults, getMyAttempt,
   createAssignment, getAssignments, getAssignmentById, closeAssignment,
   submitAssignment, getSubmissions, gradeSubmission, getMySubmission,
 } = require('../controllers/assessment.controller');
@@ -22,6 +22,7 @@ router.put('/quiz/:quizId/publish-results', requireRole('faculty', 'admin'), pub
 router.get('/quizzes', requireRole('student', 'faculty', 'admin'), getQuizzes);
 router.post('/quizzes/:quizId/start', requireRole('student'), startQuiz);
 router.post('/quizzes/:quizId/submit', requireRole('student'), submitQuiz);
+router.get('/quizzes/:quizId/my-attempt', requireRole('student'), getMyAttempt);
 
 // ── Assignment Routes ────────────────────────────────────────────────
 // Faculty routes

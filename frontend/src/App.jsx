@@ -33,6 +33,7 @@ import StudentAttendance from './pages/attendance/StudentAttendance';
 import AssessmentDashboard from './pages/assessments/AssessmentDashboard';
 import QuizBuilder from './pages/assessments/QuizBuilder';
 import QuizAttempt from './pages/assessments/QuizAttempt';
+import QuizResult from './pages/assessments/QuizResult';
 import Gradebook from './pages/assessments/Gradebook';
 import AssignmentBuilder from './pages/assessments/AssignmentBuilder';
 import AssignmentView from './pages/assessments/AssignmentView';
@@ -123,7 +124,9 @@ function App() {
         <Route path="/dashboard/student"     element={<StudentDashboard />} />
         <Route path="/student/attendance"    element={<StudentAttendance />} />
         <Route path="/student/assessments"   element={<AssessmentDashboard />} />
+        <Route path="/assessments"           element={<AssessmentDashboard />} />
         <Route path="/assessments/quiz/:quizId" element={<QuizAttempt />} />
+        <Route path="/assessments/quiz/:quizId/result" element={<QuizResult />} />
         <Route path="/assessments/assignment/:id" element={<AssignmentView />} />
         <Route path="/student/timetable"     element={<ComingSoon title="My Timetable" eta="Sprint 2" />} />
         <Route path="/student/leaves"        element={<StudentLeaveManager />} />

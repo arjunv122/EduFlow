@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { getQuizzesManage, getQuizzes, getAssignments } from '../../api/assessmentApi';
-import { BookOpen, Plus, FileText, Clock, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { getQuizzesManage, getQuizzes, getAssignments, getMyAttempt } from '../../api/assessmentApi';
+import { BookOpen, Plus, FileText, Clock, CheckCircle2, AlertTriangle, Users, Trophy, Loader2 } from 'lucide-react';
 
 const statusBadge = (status) => ({
   draft:      'badge-neutral',
@@ -20,6 +20,8 @@ const AssessmentDashboard = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Map of quizId -> attempt (for students)
+  const [myAttempts, setMyAttempts] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -29,8 +31,23 @@ const AssessmentDashboard = () => {
           isFaculty ? getQuizzesManage() : getQuizzes(),
           getAssignments(),
         ]);
-        setQuizzes(qRes.data?.data || []);
+        const fetchedQuizzes = qRes.data?.data || [];
+        setQuizzes(fetchedQuizzes);
         setAssignments(aRes.data?.data || aRes.data || []);
+
+        // For students, fetch attempt status for each quiz
+        if (!isFaculty && fetchedQuizzes.length > 0) {
+          const attemptResults = await Promise.allSettled(
+            fetchedQuizzes.map(q => getMyAttempt(q._id))
+          );
+          const attemptsMap = {};
+          attemptResults.forEach((result, idx) => {
+            if (result.status === 'fulfilled' && result.value?.data?.data) {
+              attemptsMap[fetchedQuizzes[idx]._id] = result.value.data.data;
+            }
+          });
+          setMyAttempts(attemptsMap);
+        }
       } catch {}
       setLoading(false);
     };
@@ -114,9 +131,46 @@ const AssessmentDashboard = () => {
                   <span className="badge badge-warning" style={{ fontSize: '0.65rem', alignSelf: 'flex-start', gap: '0.2rem' }}>🛡 Proctored</span>
                 )}
                 <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                  {user.role === 'student' && (q.status === 'active' || q.status === 'published') ? (
-                    <Link to={`/assessments/quiz/${q._id}`} className="btn btn-accent" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }}>Start Quiz</Link>
-                  ) : isFaculty ? (
+                  {user.role === 'student' && (q.status === 'active' || q.status === 'published') ? (() => {
+                    const attempt = myAttempts[q._id];
+                    // Already submitted
+                    if (attempt && attempt.status !== 'in_progress') {
+                      if (attempt.isPublished) {
+                        // Results are published — show score + view link
+                        const passed = attempt.percentage >= (attempt.quiz?.passingMarks || 0);
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}>
+                              <Trophy size={14} color={passed ? 'var(--status-present)' : 'var(--status-absent)'} />
+                              <span style={{ fontWeight: 700, color: passed ? 'var(--status-present)' : 'var(--status-absent)' }}>
+                                {attempt.totalScore ?? 0} / {attempt.quiz?.totalMarks ?? q.totalMarks} marks ({Math.round(attempt.percentage ?? 0)}%)
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: passed ? 'var(--status-present)' : 'var(--status-absent)' }}>
+                                {passed ? '✓ Passed' : '✗ Failed'}
+                              </span>
+                            </div>
+                            <Link to={`/assessments/quiz/${q._id}/result`} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem', gap: '0.4rem' }}>
+                              <Trophy size={13} /> View Results
+                            </Link>
+                          </div>
+                        );
+                      } else {
+                        // Submitted but results not yet published
+                        return (
+                          <div style={{ padding: '0.6rem', background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                            <CheckCircle2 size={14} color="var(--status-present)" />
+                            Submitted — Results Pending
+                          </div>
+                        );
+                      }
+                    }
+                    // Not yet started or in-progress
+                    return (
+                      <Link to={`/assessments/quiz/${q._id}`} className="btn btn-accent" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }}>
+                        {attempt?.status === 'in_progress' ? 'Resume Quiz' : 'Start Quiz'}
+                      </Link>
+                    );
+                  })() : isFaculty ? (
                     <Link to={`/gradebook`} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }}>Gradebook</Link>
                   ) : null}
                 </div>

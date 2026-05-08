@@ -67,6 +67,19 @@ const publishQuizResults = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// Student: get their own attempt for a quiz
+const getMyAttempt = async (req, res, next) => {
+  try {
+    const QuizAttempt = require('../models/QuizAttempt');
+    const attempt = await QuizAttempt.findOne({
+      quiz: req.params.quizId,
+      student: req.user._id,
+      institution: getInstId(req),
+    }).populate('quiz', 'title totalMarks passingMarks showResultImmediately questions');
+    sendSuccess(res, attempt || null);
+  } catch (error) { next(error); }
+};
+
 // ═══════════════════════════════════════════════════════════════════
 //  ASSIGNMENT CONTROLLERS
 // ═══════════════════════════════════════════════════════════════════
@@ -130,7 +143,7 @@ const getMySubmission = async (req, res, next) => {
 };
 
 module.exports = {
-  createQuiz, getQuizzes, startQuiz, submitQuiz, getQuizAttempts, publishQuizResults,
+  createQuiz, getQuizzes, startQuiz, submitQuiz, getQuizAttempts, publishQuizResults, getMyAttempt,
   createAssignment, getAssignments, getAssignmentById, closeAssignment,
   submitAssignment, getSubmissions, gradeSubmission, getMySubmission,
 };

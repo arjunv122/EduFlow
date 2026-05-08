@@ -35,6 +35,10 @@ export const getQuizAttempts = (quizId) =>
 export const publishQuizResults = (quizId) =>
   api.put(`/assessment/quiz/${quizId}/publish-results`);
 
+// Student: Get my own attempt for a quiz
+export const getMyAttempt = (quizId) =>
+  api.get(`/assessment/quizzes/${quizId}/my-attempt`);
+
 // ═══════════════════════════════════════════════════════════════════
 //  ASSIGNMENT APIs
 // ═══════════════════════════════════════════════════════════════════
