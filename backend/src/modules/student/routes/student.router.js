@@ -35,20 +35,43 @@ router.get('/leaves/my', requireRole('student'), async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// HOD / Coordinator leave routes (faculty who are HOD)
+// HOD / Faculty leave routes — view dept leaves
 router.get('/leaves/department', requireRole('faculty', 'admin'), async (req, res, next) => {
   try {
-    const User = require('../../identity/models/User');
+    const FacultyProfile = require('../../faculty/models/FacultyProfile');
     const Department = require('../../academics/models/Department');
-    const user = await User.findById(req.user._id);
-    // Find department where this user is HOD or coordinator
-    const dept = await Department.findOne({
-      institution: req.institutionId,
-      $or: [{ head: req.user._id }, { coordinator: req.user._id }]
-    });
-    if (!dept) return res.status(403).json({ success: false, message: 'You are not an HOD or coordinator of any department' });
-    const result = await studentLeaveService.getDepartmentLeaves(req.institutionId, dept._id, req.query.status || null);
+
+    // Find this faculty's department from their profile
+    const facultyProfile = await FacultyProfile.findOne({ user: req.user._id });
+    let deptId = facultyProfile?.department || null;
+
+    // If no department, check if they are HOD of any department
+    if (!deptId) {
+      const dept = await Department.findOne({
+        institution: req.institutionId,
+        $or: [{ head: req.user._id }, { coordinator: req.user._id }]
+      });
+      deptId = dept?._id || null;
+    }
+
+    if (!deptId) {
+      return res.status(403).json({ success: false, message: 'You are not associated with any department' });
+    }
+
+    const result = await studentLeaveService.getDepartmentLeaves(req.institutionId, deptId, req.query.status || null);
     sendSuccess(res, result);
+  } catch (error) { next(error); }
+});
+
+// Upload medical document for an existing leave request
+router.put('/leaves/:id/upload-document', requireRole('student'), async (req, res, next) => {
+  try {
+    const { documentUrl, documentName } = req.body;
+    if (!documentUrl) return res.status(400).json({ success: false, message: 'documentUrl is required' });
+    const result = await studentLeaveService.uploadMedicalDocument(
+      req.institutionId, req.user._id, req.params.id, { documentUrl, documentName: documentName || 'Medical Document' }
+    );
+    sendSuccess(res, result, 'Medical document uploaded');
   } catch (error) { next(error); }
 });
 

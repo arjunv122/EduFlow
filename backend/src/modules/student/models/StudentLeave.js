@@ -37,6 +37,10 @@ const studentLeaveSchema = new mongoose.Schema({
   },
   reviewedAt: Date,
   remarks: { type: String, default: '' },
+  // Medical document upload (URL or base64, uploaded after leave application)
+  medicalDocument: { type: String, default: null },
+  medicalDocumentName: { type: String, default: null },
+  documentUploadedAt: { type: Date, default: null },
 }, {
   timestamps: true,
 });

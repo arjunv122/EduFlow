@@ -57,7 +57,8 @@ class StudentLeaveService {
       throw Object.assign(new Error('Start date must be before end date'), { statusCode: 400 });
     }
 
-    if (new Date(startDate) < new Date().setHours(0, 0, 0, 0)) {
+    // Medical leave can be applied for past dates (student may have been sick)
+    if (leaveType !== 'medical' && new Date(startDate) < new Date().setHours(0, 0, 0, 0)) {
       throw Object.assign(new Error('Cannot apply leave for past dates'), { statusCode: 400 });
     }
 
@@ -79,7 +80,7 @@ class StudentLeaveService {
 
     const totalDays = this._countLeaveDays(startDate, endDate);
 
-    return await StudentLeave.create({
+    const leaveData = {
       student: studentId,
       institution: institutionId,
       department: profile.department,
@@ -88,7 +89,30 @@ class StudentLeaveService {
       reason,
       leaveType: leaveType || 'personal',
       totalDays,
-    });
+    };
+
+    // If medical doc was provided at apply time, save it
+    if (data.documentUrl) {
+      leaveData.medicalDocument = data.documentUrl;
+      leaveData.medicalDocumentName = data.documentName || 'Medical Document';
+      leaveData.documentUploadedAt = new Date();
+    }
+
+    return await StudentLeave.create(leaveData);
+  }
+
+  // Upload or update medical document for an existing leave
+  async uploadMedicalDocument(institutionId, studentId, leaveId, docData) {
+    const leave = await StudentLeave.findOne({ _id: leaveId, student: studentId, institution: institutionId });
+    if (!leave) throw Object.assign(new Error('Leave not found'), { statusCode: 404 });
+    if (leave.leaveType !== 'medical') throw Object.assign(new Error('Document upload only for medical leaves'), { statusCode: 400 });
+    if (leave.status === 'rejected') throw Object.assign(new Error('Cannot update a rejected leave'), { statusCode: 400 });
+
+    leave.medicalDocument = docData.documentUrl;
+    leave.medicalDocumentName = docData.documentName;
+    leave.documentUploadedAt = new Date();
+    await leave.save();
+    return leave;
   }
 
   async getMyLeaves(institutionId, studentId) {
@@ -113,17 +137,18 @@ class StudentLeaveService {
       throw Object.assign(new Error('Leave already processed'), { statusCode: 400 });
     }
 
-    // Verify reviewer is HOD or coordinator of the department
+    // Verify reviewer belongs to the same department (HOD, coordinator, or any faculty in dept)
+    const FacultyProfile = require('../models/FacultyProfile');
     const dept = await Department.findById(leave.department);
     if (!dept) throw Object.assign(new Error('Department not found'), { statusCode: 404 });
 
-    const isAuthorized = (
+    const isHOD = (
       dept.head?.toString() === reviewerId.toString() ||
       dept.coordinator?.toString() === reviewerId.toString()
     );
-
-    if (!isAuthorized) {
-      throw Object.assign(new Error('Only the HOD or Department Coordinator can approve/reject leaves'), { statusCode: 403 });
+    const facultyInDept = await FacultyProfile.findOne({ user: reviewerId, department: leave.department });
+    if (!isHOD && !facultyInDept) {
+      throw Object.assign(new Error('You are not authorized to approve leaves for this department'), { statusCode: 403 });
     }
 
     leave.status = status;

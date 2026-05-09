@@ -81,6 +81,8 @@ export const deleteMeeting = (id) => api.delete(`/communication/meetings/${id}`)
 // ═══════════════════════════════════════════════════════════════════
 export const applyStudentLeave = (data) => api.post('/student/leaves', data);
 export const getMyLeaves = () => api.get('/student/leaves/my');
+export const uploadMedicalDocument = (leaveId, documentUrl, documentName) =>
+  api.put(`/student/leaves/${leaveId}/upload-document`, { documentUrl, documentName });
 export const getDepartmentLeaves = (status = null) =>
   api.get('/student/leaves/department', { params: status ? { status } : {} });
 export const processStudentLeave = (id, status, remarks = '') =>
