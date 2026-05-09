@@ -89,14 +89,30 @@ const QuizAttempt = () => {
   useEffect(() => {
     if (!quiz?.proctoring?.enabled || !quiz?.proctoring?.tabSwitchDetection || showProctorWarning) return;
 
+    const maxSwitches = quiz.proctoring.maxTabSwitches || 1;
+
     const handleVisibility = () => {
       if (document.hidden && !hasAutoSubmittedRef.current) {
         tabSwitchCountRef.current++;
-        proctorLogRef.current.push({ event: 'tab_switch', timestamp: new Date() });
+        const count = tabSwitchCountRef.current;
+        proctorLogRef.current.push({ event: 'tab_switch', count, timestamp: new Date() });
 
-        if (quiz.proctoring.autoSubmitOnSwitch) {
+        if (quiz.proctoring.autoSubmitOnSwitch && count >= maxSwitches) {
+          // Exceeded limit — auto-submit
           handleAutoSubmit('tab_switch');
+        } else if (quiz.proctoring.autoSubmitOnSwitch) {
+          // Warning — under limit
+          const remaining = maxSwitches - count;
+          toast.error(
+            `⚠ Tab switch detected! (${count}/${maxSwitches}) — ${remaining} more and quiz will auto-submit!`,
+            { duration: 5000 }
+          );
+        } else {
+          // Detection only, no auto-submit
+          toast(`Tab switch detected (${count} total)`, { icon: '👁' });
         }
+        // Force re-render to update the warning banner
+        setTimeLeft(t => t);
       }
     };
 
@@ -239,7 +255,14 @@ const QuizAttempt = () => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', fontWeight: 600 }}>This quiz has proctoring enabled. Rules:</p>
             <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.8, paddingLeft: '1.25rem', margin: 0 }}>
               {quiz?.proctoring?.fullScreenEnforcement && <li><strong>Full Screen Required</strong> — You must stay in fullscreen mode</li>}
-              {quiz?.proctoring?.tabSwitchDetection && <li><strong>No Tab Switching</strong> — Switching tabs will auto-submit your quiz</li>}
+              {quiz?.proctoring?.tabSwitchDetection && (
+                <li>
+                  <strong>No Tab Switching</strong> —
+                  {quiz?.proctoring?.autoSubmitOnSwitch
+                    ? ` You have ${quiz.proctoring.maxTabSwitches || 1} allowed switch${(quiz.proctoring.maxTabSwitches || 1) > 1 ? 'es' : ''}. After that, quiz will auto-submit.`
+                    : ' Tab switches will be recorded and reported.'}
+                </li>
+              )}
               {quiz?.proctoring?.preventCopyPaste && <li><strong>No Copy/Paste</strong> — Copy, paste, and right-click are disabled</li>}
               <li><strong>Time Limit</strong> — {quiz?.duration} minutes</li>
             </ul>
@@ -289,6 +312,31 @@ const QuizAttempt = () => {
           </div>
         </div>
       </div>
+
+      {/* Tab switch warning banner */}
+      {quiz?.proctoring?.enabled && quiz?.proctoring?.tabSwitchDetection && tabSwitchCountRef.current > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.6rem 1.25rem', borderRadius: 'var(--radius-md)',
+          background: tabSwitchCountRef.current >= (quiz.proctoring.maxTabSwitches || 1) - 1
+            ? 'var(--status-absent-bg)' : 'var(--status-warning-bg)',
+          border: `1px solid ${tabSwitchCountRef.current >= (quiz.proctoring.maxTabSwitches || 1) - 1
+            ? 'var(--status-absent)' : 'rgba(232,160,32,0.4)'}`,
+          fontSize: '0.82rem', fontWeight: 600,
+          color: tabSwitchCountRef.current >= (quiz.proctoring.maxTabSwitches || 1) - 1
+            ? 'var(--status-absent)' : '#E8A020',
+        }}>
+          <AlertTriangle size={15} />
+          Tab switches: {tabSwitchCountRef.current} / {quiz.proctoring.maxTabSwitches || 1}
+          {quiz.proctoring.autoSubmitOnSwitch && (
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', opacity: 0.8 }}>
+              {(quiz.proctoring.maxTabSwitches || 1) - tabSwitchCountRef.current <= 1
+                ? '⚠ Next switch will auto-submit!'
+                : `${(quiz.proctoring.maxTabSwitches || 1) - tabSwitchCountRef.current} switches remaining`}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Question Card */}
       {q && (

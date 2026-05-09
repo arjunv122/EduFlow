@@ -69,6 +69,7 @@ const quizSchema = new mongoose.Schema({
     tabSwitchDetection: { type: Boolean, default: true },
     fullScreenEnforcement: { type: Boolean, default: true },
     autoSubmitOnSwitch: { type: Boolean, default: true },
+    maxTabSwitches: { type: Number, default: 1 }, // Auto-submit after this many switches (0 = never auto-submit)
     preventCopyPaste: { type: Boolean, default: true },
   },
   status: {

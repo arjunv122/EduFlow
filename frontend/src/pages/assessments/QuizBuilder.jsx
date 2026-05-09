@@ -137,7 +137,7 @@ const QuizBuilder = () => {
     passingMarks: 0,
     randomizeQuestions: false,
     showResultImmediately: true,
-    proctoring: { enabled: false, tabSwitchDetection: true, fullScreenEnforcement: true, autoSubmitOnSwitch: true, preventCopyPaste: true },
+    proctoring: { enabled: false, tabSwitchDetection: true, fullScreenEnforcement: true, autoSubmitOnSwitch: true, maxTabSwitches: 1, preventCopyPaste: true },
     status: 'draft',
   });
 
@@ -360,7 +360,6 @@ const QuizBuilder = () => {
             {[
               { key: 'fullScreenEnforcement', label: 'Force Full Screen Mode' },
               { key: 'tabSwitchDetection', label: 'Detect Tab Switches' },
-              { key: 'autoSubmitOnSwitch', label: 'Auto-Submit on Tab Switch (immediate)' },
               { key: 'preventCopyPaste', label: 'Block Copy / Paste / Right-Click' },
             ].map(({ key, label: lbl }) => (
               <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
@@ -372,6 +371,38 @@ const QuizBuilder = () => {
                 <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{lbl}</span>
               </label>
             ))}
+
+            {/* Tab switch limit — only show if tab detection is enabled */}
+            {meta.proctoring.tabSwitchDetection && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                  <ToggleSwitch
+                    value={meta.proctoring.autoSubmitOnSwitch}
+                    color="var(--status-absent)"
+                    onToggle={() => setMeta(m => ({ ...m, proctoring: { ...m.proctoring, autoSubmitOnSwitch: !m.proctoring.autoSubmitOnSwitch } }))}
+                  />
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Auto-Submit on Tab Switch</span>
+                </label>
+                {meta.proctoring.autoSubmitOnSwitch && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Max allowed switches before auto-submit:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={meta.proctoring.maxTabSwitches || 1}
+                      onChange={(e) => setMeta(m => ({ ...m, proctoring: { ...m.proctoring, maxTabSwitches: Math.max(1, Number(e.target.value)) } }))}
+                      style={{ width: 70, padding: '0.35rem 0.5rem', fontSize: '0.85rem', textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--status-absent)', fontWeight: 600 }}>
+                      {meta.proctoring.maxTabSwitches === 1
+                        ? '(Submits on 1st switch)'
+                        : `(Submits after ${meta.proctoring.maxTabSwitches || 1} switches)`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
