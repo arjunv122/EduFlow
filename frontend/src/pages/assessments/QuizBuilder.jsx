@@ -179,6 +179,10 @@ const QuizBuilder = () => {
         ...meta,
         classSection: meta.classSectionId,
         course: meta.courseId,
+        // Convert local datetime-local values to proper UTC ISO strings
+        // datetime-local gives "2026-05-09T17:50" (no TZ) — new Date() treats as local time
+        startDateTime: new Date(meta.startDateTime).toISOString(),
+        endDateTime: new Date(meta.endDateTime).toISOString(),
         questions: questions.map(({ id, ...q }) => q),
         status: publishStatus,
       };
