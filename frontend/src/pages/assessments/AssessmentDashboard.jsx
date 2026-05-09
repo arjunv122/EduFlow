@@ -136,6 +136,12 @@ const AssessmentDashboard = () => {
                 <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                   {user.role === 'student' && (q.status === 'active' || q.status === 'published') ? (() => {
                     const attempt = myAttempts[q._id];
+                    const now = new Date();
+                    const quizStart = q.startDateTime ? new Date(q.startDateTime) : null;
+                    const quizEnd = q.endDateTime ? new Date(q.endDateTime) : null;
+                    const notStartedYet = quizStart && now < quizStart;
+                    const hasEnded = quizEnd && now > quizEnd;
+
                     // Already submitted
                     if (attempt && attempt.status !== 'in_progress') {
                       if (attempt.isPublished) {
@@ -166,6 +172,23 @@ const AssessmentDashboard = () => {
                           </div>
                         );
                       }
+                    }
+                    // Quiz hasn't started yet
+                    if (notStartedYet) {
+                      return (
+                        <div style={{ padding: '0.6rem', background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                          <Clock size={14} color="var(--accent)" />
+                          Starts {quizStart.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      );
+                    }
+                    // Quiz window has ended
+                    if (hasEnded && !attempt) {
+                      return (
+                        <div style={{ padding: '0.6rem', background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center', fontSize: '0.8rem', color: 'var(--status-absent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                          <AlertTriangle size={14} /> Quiz Ended — Not Attempted
+                        </div>
+                      );
                     }
                     // Not yet started or in-progress
                     return (
