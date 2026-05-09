@@ -76,7 +76,8 @@ const getMyAttempt = async (req, res, next) => {
       student: req.user._id,
       institution: getInstId(req),
     }).populate('quiz', 'title totalMarks passingMarks showResultImmediately questions');
-    sendSuccess(res, attempt || null);
+    // Must convert Mongoose doc to plain object for sendSuccess's Object.assign to work
+    sendSuccess(res, attempt ? attempt.toObject() : null);
   } catch (error) { next(error); }
 };
 
