@@ -22,3 +22,19 @@ export const getMyAttendanceStats = (courseId = null) =>
   api.get('/attendance/me/stats', {
     params: courseId ? { courseId } : {},
   });
+
+// Student: Get attendance calendar heatmap data for a given month/year
+export const getMyCalendar = (month, year) =>
+  api.get('/attendance/me/calendar', { params: { month, year } });
+
+// Student: Get attendance stats broken down by all enrolled courses
+export const getMyStatsAllCourses = () =>
+  api.get('/attendance/me/stats/all-courses');
+
+// Export attendance report (faculty: own classes, admin: all)
+export const exportAttendanceReport = (format = 'csv', filters = {}) =>
+  api.get('/attendance/reports/export', {
+    params: { format, ...filters },
+    responseType: 'blob',
+  });
+

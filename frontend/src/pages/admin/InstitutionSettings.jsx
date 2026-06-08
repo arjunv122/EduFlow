@@ -16,6 +16,7 @@ const InstitutionSettings = () => {
     timezone: 'Asia/Kolkata',
     academicYearStart: '',
     academicYearEnd: '',
+    minAttendancePercent: 75,
   });
 
   useEffect(() => {
@@ -32,6 +33,7 @@ const InstitutionSettings = () => {
             timezone: data.settings?.timezone || 'Asia/Kolkata',
             academicYearStart: data.settings?.academicYearStart || '',
             academicYearEnd: data.settings?.academicYearEnd || '',
+            minAttendancePercent: data.settings?.minAttendancePercent ?? 75,
           });
           setLoading(false);
           return;
@@ -55,6 +57,7 @@ const InstitutionSettings = () => {
           timezone: data.settings?.timezone || 'Asia/Kolkata',
           academicYearStart: data.settings?.academicYearStart || '',
           academicYearEnd: data.settings?.academicYearEnd || '',
+          minAttendancePercent: data.settings?.minAttendancePercent ?? 75,
         });
       } catch (err) {
         toast.error('Failed to load institution data. You might lack permissions.');
@@ -88,6 +91,7 @@ const InstitutionSettings = () => {
         settings: {
           academicYearStart: form.academicYearStart,
           academicYearEnd:   form.academicYearEnd,
+          minAttendancePercent: parseInt(form.minAttendancePercent) || 75,
         },
       });
       toast.success('Settings updated');
@@ -195,6 +199,28 @@ const InstitutionSettings = () => {
                     value={form.academicYearEnd}
                     onChange={e => setForm(f => ({ ...f, academicYearEnd: e.target.value }))}
                   />
+                </div>
+              </div>
+
+              <div className="card-header" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none', paddingTop: '1rem' }}>
+                <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Attendance Policy</h3>
+              </div>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-field">
+                  <label>Minimum Attendance Threshold (%)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={form.minAttendancePercent}
+                      onChange={e => setForm(f => ({ ...f, minAttendancePercent: e.target.value }))}
+                      style={{ width: '100px' }}
+                    />
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                      Students below this % will receive automatic alerts (student + HOD)
+                    </span>
+                  </div>
                 </div>
               </div>
 

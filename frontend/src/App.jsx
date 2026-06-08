@@ -137,7 +137,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin', 'superadmin']}><MainLayout /></ProtectedRoute>}>
         <Route path="/announcements"         element={<AnnouncementsPage />} />
         <Route path="/profile/password"      element={<ChangePassword />} />
-        <Route path="/support"               element={<ComingSoon title="Support Tickets" eta="Sprint 2" />} />
+
       </Route>
 
       {/* ── Root redirect — sends to correct role tree ─────── */}

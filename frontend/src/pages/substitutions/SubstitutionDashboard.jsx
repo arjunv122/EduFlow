@@ -44,7 +44,7 @@ const SubstitutionDashboard = () => {
     return (
       <div className="card" style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Loading AI substitution recommendations…</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Loading pending substitutions…</p>
       </div>
     );
   }

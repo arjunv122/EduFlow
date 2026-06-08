@@ -93,12 +93,6 @@ const NAV_CONFIG = {
       ],
     },
     {
-      section: 'Support',
-      items: [
-        { name: 'Support Tickets', path: '/support', icon: HelpCircle },
-      ],
-    },
-    {
       section: 'Account',
       items: [
         { name: 'Password & Security', path: '/profile/password', icon: Settings },
@@ -131,12 +125,6 @@ const NAV_CONFIG = {
       ],
     },
     {
-      section: 'Support',
-      items: [
-        { name: 'Support Tickets', path: '/support', icon: HelpCircle },
-      ],
-    },
-    {
       section: 'Account',
       items: [
         { name: 'Password & Security', path: '/profile/password', icon: Settings },
@@ -155,12 +143,6 @@ const NAV_CONFIG = {
         { name: 'My Leaves',       path: '/student/leaves',     icon: Calendar },
         { name: 'Meetings',        path: '/student/meetings',   icon: Video },
         { name: 'Announcements',   path: '/announcements',      icon: Megaphone },
-      ],
-    },
-    {
-      section: 'Support',
-      items: [
-        { name: 'Support Tickets', path: '/support', icon: HelpCircle },
       ],
     },
     {

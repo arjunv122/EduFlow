@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { initiateSession, markAttendance, submitSession } from '../../api/attendanceApi';
+import { initiateSession, markAttendance, submitSession, exportAttendanceReport } from '../../api/attendanceApi';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
   ClipboardCheck, Play, Send, CheckCircle2,
-  Loader2, AlertTriangle
+  Loader2, AlertTriangle, Download
 } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -68,6 +68,23 @@ const AttendanceDashboard = () => {
   const [populatedStudents, setPopulatedStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleExport = async (format) => {
+    try {
+      const filters = {};
+      if (selectedSection) filters.classSectionId = selectedSection;
+      const res = await exportAttendanceReport(format, filters);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.${format}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success(`${format.toUpperCase()} report downloaded`);
+    } catch {
+      toast.error('Export failed');
+    }
+  };
 
   const summary = records.reduce(
     (acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; },
@@ -182,13 +199,28 @@ const AttendanceDashboard = () => {
 
       {/* Page Header */}
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <div style={{ padding: '0.55rem', borderRadius: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', display: 'flex' }}>
-            <ClipboardCheck size={20} color="var(--accent)" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.875rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <div style={{ padding: '0.55rem', borderRadius: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', display: 'flex' }}>
+              <ClipboardCheck size={20} color="var(--accent)" />
+            </div>
+            <div>
+              <h1 className="page-title serif-heading">Attendance</h1>
+              <p className="page-subtitle">Mark and manage class attendance sessions</p>
+            </div>
           </div>
-          <div>
-            <h1 className="page-title serif-heading">Attendance</h1>
-            <p className="page-subtitle">Mark and manage class attendance sessions</p>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            {['csv', 'excel', 'pdf'].map(fmt => (
+              <button
+                key={fmt}
+                onClick={() => handleExport(fmt)}
+                className="btn btn-secondary"
+                style={{ padding: '0.4rem 0.7rem', fontSize: '0.72rem', gap: '0.3rem', textTransform: 'uppercase' }}
+              >
+                <Download size={12} />
+                {fmt}
+              </button>
+            ))}
           </div>
         </div>
       </div>

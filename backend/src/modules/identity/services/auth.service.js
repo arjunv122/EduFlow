@@ -176,6 +176,7 @@ class AuthService {
     if (isWhitelisted) {
       // 7a. Send credentials to personal contact email
       try {
+        console.log(`📧 Sending activation credentials to: ${contactEmail} (role: ${role}, institutional: ${institutionalEmail})`);
         const rollNo = role === 'student' ? (profileData.studentId || `STU${Date.now()}`) : (profileData.facultyId || `FAC${Date.now()}`);
         const template = emailTemplates.activationCredentials(
           name,
@@ -183,8 +184,13 @@ class AuthService {
           defaultPassword,
           institution?.name || 'Your Institution'
         );
-        await sendEmail({ to: contactEmail, ...template });
-        credentialsEmailSent = true;
+        const result = await sendEmail({ to: contactEmail, ...template });
+        credentialsEmailSent = !!result;
+
+        // 7a.1 For faculty (who need admin approval), also send approvalPending notice
+        if (role === 'faculty' && !isApproved) {
+          await sendEmail({ to: contactEmail, ...emailTemplates.approvalPending(name) });
+        }
 
         // 7b. Mark whitelist as claimed
         if (whitelistRecord) {
@@ -192,7 +198,7 @@ class AuthService {
           await whitelistRecord.save();
         }
       } catch (e) {
-        console.error('Email send error during pre-approved activation:', e.message);
+        console.error(`❌ Email send error during pre-approved activation to ${contactEmail}:`, e.message);
       }
     }
 

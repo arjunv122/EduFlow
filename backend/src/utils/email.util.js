@@ -50,6 +50,8 @@ const sendEmail = async ({ to, subject, html, text }) => {
       text: text || html.replace(/<[^>]+>/g, ''), // Strip HTML as fallback
     });
 
+    console.log(`✉️ Email sent to ${to}: "${subject}"`);
+
     if (process.env.NODE_ENV !== 'production') {
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
@@ -59,7 +61,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
 
     return info;
   } catch (error) {
-    console.error('❌ Email send error:', error.message);
+    console.error(`❌ Email send error to ${to}:`, error.message);
     return null;
   }
 };
@@ -310,6 +312,42 @@ const emailTemplates = {
           <p style="color: #475569; font-size: 12px; margin: 0; text-align: center;">
             This is an automated message from EduFlow. Do not reply to this email.
           </p>
+        </div>
+      </div>
+    `,
+  }),
+
+  leaveStatusUpdate: (studentName, dateRange, status, remarks = '') => ({
+    subject: `EduFlow — Leave Request ${status === 'approved' ? 'Approved ✅' : 'Rejected ❌'}`,
+    html: `
+      <div style="font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0F172A; border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, ${status === 'approved' ? '#10B981, #059669' : '#EF4444, #DC2626'}); padding: 28px 32px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px; font-family: Georgia, serif;">EduFlow</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0; font-size: 13px;">Leave Request Update</p>
+        </div>
+        <div style="padding: 32px; color: #E2E8F0;">
+          <h2 style="color: ${status === 'approved' ? '#34D399' : '#F87171'}; margin: 0 0 16px; font-size: 18px;">
+            Leave ${status === 'approved' ? 'Approved ✅' : 'Rejected ❌'}
+          </h2>
+          <p style="color: #94A3B8; margin: 0 0 12px; font-size: 14px;">Hi ${studentName},</p>
+          <p style="color: #94A3B8; margin: 0 0 20px; font-size: 14px; line-height: 1.6;">
+            Your leave request for <strong style="color: #E2E8F0;">${dateRange}</strong> has been
+            <strong style="color: ${status === 'approved' ? '#34D399' : '#F87171'};">${status}</strong>.
+          </p>
+          ${remarks ? `
+          <div style="background: #1E293B; border: 1px solid #3A4558; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <p style="margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; font-weight: 700;">Reviewer Remarks</p>
+            <p style="margin: 0; font-size: 14px; color: #CBD5E1;">${remarks}</p>
+          </div>
+          ` : ''}
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/student/leaves"
+               style="display: inline-block; background: ${status === 'approved' ? '#10B981' : '#EF4444'}; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px;">
+              View My Leaves
+            </a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #3A4558; margin: 24px 0;" />
+          <p style="color: #475569; font-size: 12px; margin: 0; text-align: center;">This is an automated message from EduFlow.</p>
         </div>
       </div>
     `,

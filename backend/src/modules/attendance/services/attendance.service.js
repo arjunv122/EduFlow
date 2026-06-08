@@ -1,8 +1,15 @@
 const AttendanceSession = require('../models/Attendance');
 const ClassSection = require('../../academics/models/ClassSection');
 const StudentProfile = require('../../student/models/StudentProfile');
+const Institution = require('../../governance/models/Institution');
+const Department = require('../../academics/models/Department');
 const { calcAttendancePercent } = require('../../../utils/response.util');
 const { sendEmail, emailTemplates } = require('../../../utils/email.util');
+
+// Simple in-memory alert cooldown tracker (7-day window)
+// Key: `${studentId}_${courseId}`, Value: Date of last alert
+const alertCooldown = new Map();
+const ALERT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 class AttendanceService {
   async initiateSession(institutionId, data) {
@@ -110,6 +117,54 @@ class AttendanceService {
   }
 
   /**
+   * Returns attendance stats broken down by ALL enrolled courses at once.
+   * Used by the student per-subject attendance table.
+   */
+  async getStudentAttendanceBySubject(institutionId, studentId) {
+    // Get all submitted sessions this student is part of
+    const sessions = await AttendanceSession.find({
+      institution: institutionId,
+      isSubmitted: true,
+      'records.student': studentId,
+    })
+      .select('records course')
+      .populate('course', 'name code');
+
+    // Group by course
+    const courseMap = new Map(); // courseId -> { courseName, courseCode, present, total }
+
+    sessions.forEach(session => {
+      const courseId = session.course?._id?.toString();
+      if (!courseId) return;
+
+      if (!courseMap.has(courseId)) {
+        courseMap.set(courseId, {
+          courseId,
+          courseName: session.course.name,
+          courseCode: session.course.code,
+          present: 0,
+          total: 0,
+        });
+      }
+
+      const entry = courseMap.get(courseId);
+      const record = session.records.find(r => r.student.toString() === studentId.toString());
+      if (record) {
+        entry.total++;
+        if (['present', 'late'].includes(record.status)) {
+          entry.present++;
+        }
+      }
+    });
+
+    // Calculate percentages and return as array
+    return Array.from(courseMap.values()).map(entry => ({
+      ...entry,
+      percentage: calcAttendancePercent(entry.present, entry.total),
+    }));
+  }
+
+  /**
    * Returns per-day attendance status for a given student/month/year.
    * Used by the student calendar heatmap.
    */
@@ -140,21 +195,122 @@ class AttendanceService {
     return calendar; // { '2025-04-01': 'present', '2025-04-02': 'absent', ... }
   }
 
-  // Internal helper to alert if low
+  /**
+   * Generate attendance report data for export (CSV/Excel/PDF).
+   * Faculty: their own classes. Admin: all classes.
+   */
+  async generateReportData(institutionId, filters = {}) {
+    const { classSectionId, courseId, facultyId } = filters;
+
+    const query = { institution: institutionId, isSubmitted: true };
+    if (classSectionId) query.classSection = classSectionId;
+    if (courseId) query.course = courseId;
+    if (facultyId) query.faculty = facultyId;
+
+    const sessions = await AttendanceSession.find(query)
+      .populate('course', 'name code')
+      .populate('classSection', 'section')
+      .populate('records.student', 'name email')
+      .sort({ date: -1 });
+
+    // Build per-student per-course aggregated data
+    const studentCourseMap = new Map();
+
+    sessions.forEach(session => {
+      const courseName = session.course?.name || 'Unknown';
+      const courseCode = session.course?.code || '';
+      const sectionName = session.classSection?.section || '';
+
+      session.records.forEach(record => {
+        const studentName = record.student?.name || 'Unknown';
+        const studentEmail = record.student?.email || '';
+        const key = `${record.student?._id}_${session.course?._id}`;
+
+        if (!studentCourseMap.has(key)) {
+          studentCourseMap.set(key, {
+            studentName,
+            studentEmail,
+            courseName,
+            courseCode,
+            section: sectionName,
+            present: 0,
+            absent: 0,
+            late: 0,
+            excused: 0,
+            total: 0,
+          });
+        }
+
+        const entry = studentCourseMap.get(key);
+        entry.total++;
+        if (record.status === 'present') entry.present++;
+        else if (record.status === 'absent') entry.absent++;
+        else if (record.status === 'late') { entry.late++; entry.present++; } // late counts as present
+        else if (record.status === 'excused') entry.excused++;
+      });
+    });
+
+    // Convert to array and compute percentages
+    return Array.from(studentCourseMap.values()).map(entry => ({
+      ...entry,
+      percentage: calcAttendancePercent(entry.present, entry.total),
+    }));
+  }
+
+  // Internal helper to alert if low — with deduplication and HOD notification
   async _checkLowAttendanceMetrics(institutionId, courseId, classSectionId) {
     const classSec = await ClassSection.findById(classSectionId).populate('course');
+
+    // Get configurable threshold from institution settings
+    const institution = await Institution.findById(institutionId);
+    const threshold = institution?.settings?.minAttendancePercent || 75;
+
     for (const studentId of classSec.enrolledStudents) {
       const stats = await this.getStudentAttendanceStats(institutionId, studentId, courseId);
       
-      // If below 75% and total classes > 5 (give them a chance at start of sem)
-      if (stats.total > 5 && stats.percentage < 75) {
+      // If below threshold and total classes > 5 (give them a chance at start of sem)
+      if (stats.total > 5 && stats.percentage < threshold) {
+        // Check cooldown to avoid spamming
+        const cooldownKey = `${studentId}_${courseId}`;
+        const lastAlert = alertCooldown.get(cooldownKey);
+        if (lastAlert && (Date.now() - lastAlert.getTime()) < ALERT_COOLDOWN_MS) {
+          continue; // Skip — already alerted within the last 7 days
+        }
+
         const profile = await StudentProfile.findOne({ user: studentId }).populate('user');
-        if (profile && profile.user && profile.parent && profile.parent.email) {
+        if (profile && profile.user) {
+          // Send alert to student
+          try {
             await sendEmail({
               to: profile.user.email,
-              ...emailTemplates.lowAttendanceAlert(profile.user.name, classSec.course.name, stats.percentage, 75)
+              ...emailTemplates.lowAttendanceAlert(profile.user.name, classSec.course.name, stats.percentage, threshold)
             });
-            // Optional: Also email parent. Skipping for now to avoid spam during testing.
+          } catch (e) {
+            console.error('Student attendance alert email failed:', e.message);
+          }
+
+          // Send alert to HOD / faculty advisor
+          try {
+            if (profile.department) {
+              const dept = await Department.findById(profile.department).populate('head', 'name email');
+              if (dept?.head?.email) {
+                await sendEmail({
+                  to: dept.head.email,
+                  ...emailTemplates.lowAttendanceAlert(
+                    `${profile.user.name} (Student in ${dept.name})`,
+                    classSec.course.name,
+                    stats.percentage,
+                    threshold
+                  )
+                });
+              }
+            }
+          } catch (e) {
+            console.error('HOD attendance alert email failed:', e.message);
+          }
+
+          // Update cooldown tracker
+          alertCooldown.set(cooldownKey, new Date());
         }
       }
     }

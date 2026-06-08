@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getMyAttendanceStats } from '../../api/attendanceApi';
+import { getMyAttendanceStats, getMyCalendar, getMyStatsAllCourses, exportAttendanceReport } from '../../api/attendanceApi';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { ClipboardCheck, TrendingUp, AlertTriangle, ChevronDown, Loader2 } from 'lucide-react';
+import { ClipboardCheck, TrendingUp, AlertTriangle, ChevronDown, Loader2, Download, BookOpen } from 'lucide-react';
 
 // Circular progress ring for attendance percentage
 const AttendanceRing = ({ percentage }) => {
@@ -75,7 +75,7 @@ const AttendanceHeatmap = ({ sessions }) => {
       <div
         key={key}
         title={`${key}${session ? ` — ${session.status}` : ' (no class)'}`}
-        style={{ width: '1rem', height: '1rem', borderRadius: '4px', background: bgColor, cursor: 'default', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.2)' } }}
+        style={{ width: '1rem', height: '1rem', borderRadius: '4px', background: bgColor, cursor: 'default', transition: 'transform 0.2s' }}
       />
     );
   }
@@ -94,6 +94,7 @@ const StudentAttendance = () => {
   const [stats, setStats] = useState(null);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [courseStats, setCourseStats] = useState([]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -121,6 +122,35 @@ const StudentAttendance = () => {
     };
     load();
   }, [selectedCourse]);
+
+  // Fetch calendar heatmap data
+  useEffect(() => {
+    const fetchCalendar = async () => {
+      try {
+        const now = new Date();
+        const res = await getMyCalendar(now.getMonth() + 1, now.getFullYear());
+        const calendar = res.data?.data || {};
+        // Convert calendar object { 'YYYY-MM-DD': 'status' } to array format for heatmap
+        const sessions = Object.entries(calendar).map(([date, status]) => ({ date, status }));
+        setSessionHistory(sessions);
+      } catch {
+        // silently fail — heatmap just stays empty
+      }
+    };
+    fetchCalendar();
+  }, []);
+
+  useEffect(() => {
+    const fetchCourseStats = async () => {
+      try {
+        const res = await getMyStatsAllCourses();
+        setCourseStats(res.data?.data || []);
+      } catch {
+        // silently fail
+      }
+    };
+    fetchCourseStats();
+  }, []);
 
   const percentage = stats?.percentage ?? 0;
   const isLow = percentage < 75 && (stats?.total || 0) > 0;
@@ -276,6 +306,72 @@ const StudentAttendance = () => {
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '0.75rem', height: '0.75rem', borderRadius: 2, background: 'var(--status-absent)' }} /> Absent</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '0.75rem', height: '0.75rem', borderRadius: 2, background: 'var(--bg-tertiary)' }} /> No Class</span>
             </div>
+          </div>
+
+          {/* Per-Subject Breakdown */}
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BookOpen size={16} color="var(--accent)" /> Subject-wise Attendance
+              </h3>
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                onClick={async () => {
+                  try {
+                    const res = await exportAttendanceReport('csv');
+                    const url = window.URL.createObjectURL(new Blob([res.data]));
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  } catch { toast.error('Export failed'); }
+                }}
+              >
+                <Download size={12} /> Export CSV
+              </button>
+            </div>
+            {courseStats.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>No course data available yet.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Course</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Present</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Percentage</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {courseStats.map((cs, idx) => {
+                      const pct = cs.percentage ?? 0;
+                      const color = pct >= 75 ? 'var(--status-present)' : pct >= 60 ? 'var(--status-warning)' : 'var(--status-absent)';
+                      const bg = pct >= 75 ? 'var(--status-present-bg)' : pct >= 60 ? 'var(--status-warning-bg)' : 'var(--status-absent-bg)';
+                      return (
+                        <tr key={cs.courseId || idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                            {cs.courseName || 'Unknown'}
+                            {cs.courseCode && <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>({cs.courseCode})</span>}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-primary)' }}>{cs.present}</td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{cs.total}</td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color }}>{pct.toFixed(1)}%</td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            <span style={{ padding: '0.2rem 0.6rem', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: bg, color }}>
+                              {pct >= 75 ? 'Safe' : pct >= 60 ? 'Warning' : 'Critical'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

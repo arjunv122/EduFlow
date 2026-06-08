@@ -1,6 +1,8 @@
 const StudentLeave = require('../models/StudentLeave');
 const StudentProfile = require('../models/StudentProfile');
 const Department = require('../../academics/models/Department');
+const FacultyProfile = require('../../faculty/models/FacultyProfile');
+const { sendEmail, emailTemplates } = require('../../../utils/email.util');
 
 class StudentLeaveService {
   // Check if a date is a Sunday
@@ -93,6 +95,10 @@ class StudentLeaveService {
 
     // If medical doc was provided at apply time, save it
     if (data.documentUrl) {
+      // Validate base64 size (~5MB limit; base64 is ~33% larger than raw)
+      if (data.documentUrl.length > 7 * 1024 * 1024) {
+        throw Object.assign(new Error('File size must be under 5MB'), { statusCode: 400 });
+      }
       leaveData.medicalDocument = data.documentUrl;
       leaveData.medicalDocumentName = data.documentName || 'Medical Document';
       leaveData.documentUploadedAt = new Date();
@@ -107,6 +113,11 @@ class StudentLeaveService {
     if (!leave) throw Object.assign(new Error('Leave not found'), { statusCode: 404 });
     if (leave.leaveType !== 'medical') throw Object.assign(new Error('Document upload only for medical leaves'), { statusCode: 400 });
     if (leave.status === 'rejected') throw Object.assign(new Error('Cannot update a rejected leave'), { statusCode: 400 });
+
+    // Validate base64 size (~5MB limit)
+    if (docData.documentUrl && docData.documentUrl.length > 7 * 1024 * 1024) {
+      throw Object.assign(new Error('File size must be under 5MB'), { statusCode: 400 });
+    }
 
     leave.medicalDocument = docData.documentUrl;
     leave.medicalDocumentName = docData.documentName;
@@ -138,7 +149,6 @@ class StudentLeaveService {
     }
 
     // Verify reviewer belongs to the same department (HOD, coordinator, or any faculty in dept)
-    const FacultyProfile = require('../models/FacultyProfile');
     const dept = await Department.findById(leave.department);
     if (!dept) throw Object.assign(new Error('Department not found'), { statusCode: 404 });
 
@@ -156,6 +166,21 @@ class StudentLeaveService {
     leave.reviewedAt = new Date();
     leave.remarks = remarks;
     await leave.save();
+
+    // Send notification email to student
+    try {
+      const User = require('../../identity/models/User');
+      const student = await User.findById(leave.student);
+      if (student) {
+        const dateRange = `${new Date(leave.startDate).toLocaleDateString()} – ${new Date(leave.endDate).toLocaleDateString()}`;
+        const template = emailTemplates.leaveStatusUpdate(
+          student.name, dateRange, status, remarks
+        );
+        await sendEmail({ to: student.email, ...template });
+      }
+    } catch (e) {
+      console.error('Leave notification email failed:', e.message);
+    }
 
     return leave;
   }

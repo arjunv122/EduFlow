@@ -1,5 +1,6 @@
 const LeaveRequest = require('../models/LeaveRequest');
 const Substitution = require('../models/Substitution');
+const FacultyProfile = require('../../faculty/models/FacultyProfile');
 const { findSubstitutes } = require('./substitution.algorithm');
 const { sendEmail, emailTemplates } = require('../../../utils/email.util');
 const ClassSection = require('../../academics/models/ClassSection');
@@ -26,13 +27,14 @@ class SubstitutionService {
     return request;
   }
 
-  async processLeaveRequest(institutionId, requestId, status, adminId) {
+  async processLeaveRequest(institutionId, requestId, status, adminId, adminRemarks = '') {
     const request = await LeaveRequest.findOne({ _id: requestId, institution: institutionId });
     if (!request) throw Object.assign(new Error('Leave request not found'), { statusCode: 404 });
 
     request.status = status;
     request.reviewedBy = adminId;
     request.reviewedAt = new Date();
+    if (adminRemarks) request.adminRemarks = adminRemarks;
     await request.save();
 
     // Trigger AI Matching for affected classes if approved
@@ -88,6 +90,16 @@ class SubstitutionService {
     sub.assignedAt = new Date();
     sub.status = 'assigned';
     await sub.save();
+
+    // Increment the substitute faculty's substitution count
+    try {
+      await FacultyProfile.findOneAndUpdate(
+        { user: substituteFacultyId },
+        { $inc: { currentSubstitutionCount: 1 } }
+      );
+    } catch (e) {
+      console.error('Failed to increment substitution count:', e.message);
+    }
 
     // Send notifications
     try {

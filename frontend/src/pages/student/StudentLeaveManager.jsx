@@ -103,6 +103,11 @@ const StudentLeaveManager = () => {
 
       // If medical and a doc is attached, convert to base64
       if (form.leaveType === 'medical' && docFile) {
+        if (docFile.size > 5 * 1024 * 1024) {
+          toast.error('File size must be under 5MB');
+          setSubmitting(false);
+          return;
+        }
         documentUrl = await fileToBase64(docFile);
         documentName = docFile.name;
       }
@@ -126,6 +131,10 @@ const StudentLeaveManager = () => {
     if (!uploadFile) return toast.error('Please select a document file');
     setUploadingFor(leaveId);
     try {
+      if (uploadFile.size > 5 * 1024 * 1024) {
+        toast.error('File size must be under 5MB');
+        return;
+      }
       const base64 = await fileToBase64(uploadFile);
       await uploadMedicalDocument(leaveId, base64, uploadFile.name);
       toast.success('Medical document uploaded!');

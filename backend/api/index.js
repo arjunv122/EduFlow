@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+const { initEmailTransporter } = require('../src/utils/email.util');
 
 let isConnected = false;
+let emailInitialized = false;
 let app;
 
 const getApp = () => {
@@ -22,6 +24,10 @@ module.exports = async (req, res) => {
         connectTimeoutMS: 8000,
       });
       isConnected = true;
+    }
+    if (!emailInitialized) {
+      await initEmailTransporter();
+      emailInitialized = true;
     }
     return getApp()(req, res);
   } catch (err) {
