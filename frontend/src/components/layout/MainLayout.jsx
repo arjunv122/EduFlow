@@ -46,7 +46,7 @@ const NAV_CONFIG = {
         { name: 'Academics',    path: '/academics',         icon: BookOpen },
         { name: 'Faculty',      path: '/faculty',           icon: Users },
         { name: 'Students',     path: '/students',          icon: Users },
-        { name: 'Substitutions',path: '/substitutions',     icon: CalendarDays },
+        { name: 'Substitutions',path: '/admin/substitutions',     icon: CalendarDays },
       ],
     },
     {
@@ -80,7 +80,7 @@ const NAV_CONFIG = {
         { name: 'Academics',    path: '/academics',         icon: BookOpen },
         { name: 'Faculty',      path: '/faculty',           icon: Users },
         { name: 'Students',     path: '/students',          icon: Users },
-        { name: 'Substitutions',path: '/substitutions',     icon: CalendarDays },
+        { name: 'Substitutions',path: '/admin/substitutions',     icon: CalendarDays },
       ],
     },
     {
@@ -114,7 +114,7 @@ const NAV_CONFIG = {
         { name: 'Attendance',   path: '/attendance',        icon: ClipboardCheck },
         { name: 'Assessments',  path: '/assessments',       icon: BookOpen },
         { name: 'Gradebook',    path: '/gradebook',         icon: BarChart3 },
-        { name: 'Substitutions',path: '/substitutions',     icon: CalendarDays },
+        { name: 'Substitutions',path: '/faculty/substitutions',     icon: CalendarDays },
         { name: 'Meetings',     path: '/faculty/meetings',  icon: Video },
       ],
     },

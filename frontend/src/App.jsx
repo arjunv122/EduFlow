@@ -101,7 +101,7 @@ function App() {
         <Route path="/academics"     element={<AcademicsManager />} />
         <Route path="/faculty"       element={<FacultyManager />} />
         <Route path="/students"      element={<StudentManager />} />
-        <Route path="/substitutions" element={<SubstitutionDashboard />} />
+        <Route path="/admin/substitutions" element={<SubstitutionDashboard />} />
       </Route>
 
       {/* ── FACULTY Route Tree ───────────────────────────────── */}
@@ -114,7 +114,7 @@ function App() {
         <Route path="/assessments/assignment/new" element={<AssignmentBuilder />} />
         <Route path="/assessments/assignment/:id/submissions" element={<AssignmentSubmissions />} />
         <Route path="/gradebook"         element={<Gradebook />} />
-        <Route path="/substitutions"     element={<SubstitutionDashboard />} />
+        <Route path="/faculty/substitutions" element={<SubstitutionDashboard />} />
         <Route path="/faculty/meetings"  element={<MeetingScheduler />} />
         <Route path="/faculty/leaves"    element={<HODLeaveApproval />} />
       </Route>

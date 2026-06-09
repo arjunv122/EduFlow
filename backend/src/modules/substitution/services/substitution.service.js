@@ -126,6 +126,28 @@ class SubstitutionService {
 
     return sub;
   }
+  async getMyLeaveRequests(institutionId, facultyId) {
+    return await LeaveRequest.find({ institution: institutionId, faculty: facultyId })
+      .sort({ createdAt: -1 })
+      .populate('reviewedBy', 'name');
+  }
+
+  async getMySubstitutions(institutionId, facultyId) {
+    // Get substitutions where this faculty is either the original or the assigned substitute
+    const asOriginal = await Substitution.find({ institution: institutionId, originalFaculty: facultyId })
+      .populate('substituteFaculty', 'name')
+      .populate('classSection', 'section')
+      .populate('course', 'name code')
+      .sort({ date: -1 });
+
+    const asSubstitute = await Substitution.find({ institution: institutionId, substituteFaculty: facultyId })
+      .populate('originalFaculty', 'name')
+      .populate('classSection', 'section')
+      .populate('course', 'name code')
+      .sort({ date: -1 });
+
+    return { asOriginal, asSubstitute };
+  }
 }
 
 module.exports = new SubstitutionService();

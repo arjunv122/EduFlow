@@ -33,4 +33,18 @@ const assignSubstitute = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { applyForLeave, processLeave, getPendingSubstitutions, assignSubstitute };
+const getMyLeaveRequests = async (req, res, next) => {
+  try {
+    const result = await substitutionService.getMyLeaveRequests(getInstId(req), req.user._id);
+    sendSuccess(res, result);
+  } catch (error) { next(error); }
+};
+
+const getMySubstitutions = async (req, res, next) => {
+  try {
+    const result = await substitutionService.getMySubstitutions(getInstId(req), req.user._id);
+    sendSuccess(res, result);
+  } catch (error) { next(error); }
+};
+
+module.exports = { applyForLeave, processLeave, getPendingSubstitutions, assignSubstitute, getMyLeaveRequests, getMySubstitutions };

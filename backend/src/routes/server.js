@@ -39,5 +39,16 @@ router.get('/', (req, res) => {
   });
 });
 
+// Deployment health check — exposes non-sensitive config
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    env: process.env.NODE_ENV,
+    frontendUrl: process.env.FRONTEND_URL || '(not set — using localhost fallback)',
+    smtpConfigured: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+    smtpHost: process.env.SMTP_HOST || '(not set)',
+  });
+});
+
 module.exports = router;
 
