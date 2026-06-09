@@ -1,6 +1,8 @@
 const authService = require('../services/auth.service');
 const { sendSuccess, sendError } = require('../../../utils/response.util');
 const { SRET_COURSE_LIST } = require('../../../config/sretCourses');
+const Institution = require('../../governance/models/Institution');
+const Department = require('../../academics/models/Department');
 
 // POST /api/auth/register
 const register = async (req, res, next) => {
@@ -101,5 +103,22 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, createSuperAdmin, changePassword, getSretCourses, forgotPassword, resetPassword };
+// GET /api/auth/sret-info (public — institution ID + departments for registration form)
+const getSretInfo = async (req, res, next) => {
+  try {
+    const institution = await Institution.findOne({
+      $or: [{ name: /SRET/i }, { name: /Sri Ramaswamy/i }]
+    });
+    if (!institution) {
+      return sendError(res, 'Institution not found', 404);
+    }
+    const departments = await Department.find({ institution: institution._id })
+      .select('name code _id')
+      .sort({ name: 1 });
+    sendSuccess(res, { institutionId: institution._id, institutionName: institution.name, departments });
+  } catch (error) {
+    next(error);
+  }
+};
 
+module.exports = { register, login, getMe, createSuperAdmin, changePassword, getSretCourses, forgotPassword, resetPassword, getSretInfo };

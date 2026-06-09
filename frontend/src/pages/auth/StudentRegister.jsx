@@ -46,15 +46,15 @@ const StudentRegister = () => {
   const [role, setRole] = useState('student'); // student | faculty
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [courses, setCourses] = useState([]);
-  
-  const defaultInstitutionId = "67fee98ea432cd580c88bc3b"; // Replace with actual SRET institution ID from context or env. Using placeholder for UI.
+  const [departments, setDepartments] = useState([]);
+  const [institutionId, setInstitutionId] = useState('');
 
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '',
     courseCode: '', // for student
     batchYear: new Date().getFullYear(), // for student
     designation: 'lecturer', // for faculty
-    department: '', // for faculty
+    department: '', // for faculty — stores department _id
   });
   const [previewEmail, setPreviewEmail] = useState('');
 
@@ -66,9 +66,15 @@ const StudentRegister = () => {
     api.get('/auth/sret-courses')
       .then(res => setCourses(res.data.courses || []))
       .catch(err => console.error(err));
-      
-    // Ideally fetch institution ID by domain, but since it's hardcoded for SRET at the moment:
-    // ...
+    
+    // Fetch SRET institution ID + departments
+    api.get('/auth/sret-info')
+      .then(res => {
+        const data = res.data;
+        setInstitutionId(data.institutionId || '');
+        setDepartments(data.departments || []);
+      })
+      .catch(err => console.error('Failed to fetch SRET info:', err));
   }, []);
 
   // Simple preview generation for display
@@ -91,17 +97,12 @@ const StudentRegister = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Actually we need the institution ID. For testing, assuming we have one or the backend can handle lookups by name.
-      // Modifying to send without institution ID if superadmin handles it, or assuming frontend fetches it.
-      // SRET's institution defaults or a fixed ID should be provided.
-      // Let's pass a placeholder domain or handle via backend.
-      
       const payload = {
         name: formData.name,
         email: formData.email, // Contact email
         password: 'TMP_PASSWORD', // Auth service overrides this
         role,
-        institutionId: sessionStorage.getItem('sretInstId') || localStorage.getItem('sretInstId') || '67fee98ea432cd580c88bc3b', // Hack for UI testing; real apps resolve via subdomain
+        institutionId: institutionId,
         profileData: {
           contactEmail: formData.email,
           phone: formData.phone,
@@ -110,7 +111,7 @@ const StudentRegister = () => {
             batchYear: formData.batchYear,
           } : {
             designation: formData.designation,
-            department: formData.department,
+            department: formData.department, // Now sends the ObjectId
           })
         }
       };
@@ -124,6 +125,9 @@ const StudentRegister = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Get selected department name for preview
+  const selectedDeptName = departments.find(d => d._id === formData.department)?.name || formData.department;
 
   return (
     <div style={S.page}>
@@ -227,7 +231,20 @@ const StudentRegister = () => {
                 </div>
                 <div style={S.fieldGroup}>
                   <label>Department</label>
-                  <input type="text" placeholder="e.g. Computer Science" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} />
+                  <div style={S.inputWrap}>
+                    <span style={S.inputIcon}><Building2 size={15} /></span>
+                    <select
+                      required
+                      value={formData.department}
+                      onChange={e => setFormData({...formData, department: e.target.value})}
+                      style={{ ...S.inputLeftPadding, appearance: 'none' }}
+                    >
+                      <option value="">-- Select Department --</option>
+                      {departments.map(d => (
+                        <option key={d._id} value={d._id}>{d.name} ({d.code})</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
