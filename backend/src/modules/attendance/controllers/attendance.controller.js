@@ -8,7 +8,7 @@ const initiateSession = async (req, res, next) => {
   try {
     const data = { ...req.body, facultyId: req.user._id };
     const result = await attendanceService.initiateSession(getInstId(req), data);
-    sendSuccess(res, result, 'Attendance session initiated', 201);
+    sendSuccess(res, { data: result }, 'Attendance session initiated', 201);
   } catch (error) { next(error); }
 };
 
@@ -16,14 +16,14 @@ const markAttendance = async (req, res, next) => {
   try {
     const { records } = req.body;
     const result = await attendanceService.markAttendance(getInstId(req), req.params.id, records);
-    sendSuccess(res, result, 'Attendance marked');
+    sendSuccess(res, { data: result }, 'Attendance marked');
   } catch (error) { next(error); }
 };
 
 const submitSession = async (req, res, next) => {
   try {
     const result = await attendanceService.submitSession(getInstId(req), req.params.id);
-    sendSuccess(res, result, 'Attendance submitted successfully');
+    sendSuccess(res, { data: result }, 'Attendance submitted successfully');
   } catch (error) { next(error); }
 };
 
