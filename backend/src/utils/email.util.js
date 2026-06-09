@@ -6,16 +6,17 @@ let transporter = null;
 const initEmailTransporter = async () => {
   // If SMTP credentials are provided in .env, use them
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const isGmail = process.env.SMTP_HOST.includes('gmail');
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: false,
+      port: isGmail ? 465 : (parseInt(process.env.SMTP_PORT) || 587),
+      secure: isGmail ? true : false,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
-    console.log('📧 Email: Using configured SMTP server');
+    console.log(`📧 Email: Using configured SMTP server (${isGmail ? 'Gmail Secure' : 'Standard'})`);
   } else {
     // Auto-generate Ethereal test account (no config needed)
     const testAccount = await nodemailer.createTestAccount();
@@ -34,7 +35,7 @@ const initEmailTransporter = async () => {
   }
 };
 
-// Send email helper
+// Send email helper with timeout to prevent hanging the server
 const sendEmail = async ({ to, subject, html, text }) => {
   if (!transporter) {
     console.warn('⚠️ Email transporter not initialized');
@@ -42,13 +43,23 @@ const sendEmail = async ({ to, subject, html, text }) => {
   }
 
   try {
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: process.env.EMAIL_FROM || 'EduFlow <noreply@eduflow.com>',
       to,
       subject,
       html,
       text: text || html.replace(/<[^>]+>/g, ''), // Strip HTML as fallback
-    });
+    };
+
+    // 10 second timeout for email sending so it never hangs the API
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('SMTP timeout exceeded')), 10000)
+    );
+
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      timeoutPromise
+    ]);
 
     console.log(`✉️ Email sent to ${to}: "${subject}"`);
 
